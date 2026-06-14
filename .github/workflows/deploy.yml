@@ -1,0 +1,68 @@
+name: 🚀 Deploy to Environment
+
+on:
+  push:
+    branches:
+      - develop   # Deploy to Dev
+      - staging   # Deploy to QA/UAT
+      - main      # Deploy to Prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Download your code from GitHub
+      - name: ✅ Checkout code
+        uses: actions/checkout@v3
+      
+      # Step 2: Figure out which environment to deploy to
+      - name: 🔍 Determine Environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "ENVIRONMENT=dev" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=Development" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "ENVIRONMENT=qa" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=QA/UAT" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=Production" >> $GITHUB_OUTPUT
+          fi
+      
+      # Step 3: Set up Python
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      # Step 4: Run the deployment script
+      - name: 📤 Deploy to ${{ steps.env.outputs.ENVIRONMENT_NAME }}
+        run: python deploy.py ${{ steps.env.outputs.ENVIRONMENT }}
+      
+      # Step 5: Print success message
+      - name: ✨ Print Success
+        if: success()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║  ✅ Deployment Successful!                            ║"
+          echo "║  Environment: ${{ steps.env.outputs.ENVIRONMENT_NAME }}"
+          echo "║  Branch: ${{ github.ref_name }}"
+          echo "║  Commit: ${{ github.sha }}"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+      
+      # Step 6: Print error message if deployment fails
+      - name: ❌ Print Error
+        if: failure()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║  ❌ Deployment Failed!                                 ║"
+          echo "║  Environment: ${{ steps.env.outputs.ENVIRONMENT_NAME }}"
+          echo "║  Branch: ${{ github.ref_name }}"
+          echo "║  Please check the logs above for details.              ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
